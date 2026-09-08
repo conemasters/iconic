@@ -1,0 +1,27 @@
+[package]
+name = "iconic-linalg"
+license.workspace = true
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+num-traits.workspace = true
+faer = "0.24"
+amd = "0.2"
+
+[features]
+default = ["use-blas"]
+
+# Dispatch dense kernels to the platform BLAS (Accelerate / OpenBLAS / MKL) on every
+# path, not just the Woodbury one. On by default so the crates users actually install
+# -- the `iconic` wheel, the C ABI -- get the same configuration the benchmark suite
+# measures. Measured 1.5x-1.9x on large dense QP/LP (qp_large n=1000: 372ms vs 710ms)
+# and 1.09x on suite SGM; the cases where it loses are sub-millisecond.
+#
+# Safe to enable unconditionally: every BLAS call sits behind `cfg(any(macos,
+# blas_system))`, and build.rs only emits `blas_system` when it finds a system BLAS,
+# so a machine without one silently uses the faer kernels instead.
+#
+# Opt out with `default-features = false`.
+use-blas = []

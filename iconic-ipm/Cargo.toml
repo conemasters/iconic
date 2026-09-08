@@ -1,0 +1,11 @@
+[package]
+name = "iconic-ipm"
+license.workspace = true
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+iconic-core = { path = "../iconic-core" }
+iconic-linalg = { path = "../iconic-linalg" }
+iconic-simplex = { path = "../iconic-simplex" }

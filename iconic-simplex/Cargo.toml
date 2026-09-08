@@ -1,0 +1,10 @@
+[package]
+name = "iconic-simplex"
+license.workspace = true
+version = "0.1.0"
+edition = "2021"
+description = "Revised dual simplex with LU factorisation and hot-start for LP"
+
+[dependencies]
+iconic-core = { path = "../iconic-core" }
+iconic-linalg = { path = "../iconic-linalg" }

@@ -1,0 +1,46 @@
+# --- Rust ---
+/target/
+**/target/
+Cargo.lock.bak
+*.rs.bk
+*.pdb
+
+# --- Python (CVXPY backend dev, venvs, build artifacts) ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- Benchmark scratch / large data ---
+/benchmarks/data/
+/benchmarks/results/
+*.mtx.gz
+
+# --- built shared libraries / compiled artifacts (never commit) ---
+**/*.so
+**/*.dylib
+**/*.dll
+**/libiconic_c.*
+*.o
+*.a
+*.rlib
+*.rmeta
+*.pyd
+*.whl
+*.dSYM/
+
+# --- OS / editor ---
+.DS_Store
+.idea/
+.vscode/
+*.swp
+.claude/
+iconic-py/.venv312/
+perf.data
+*.log

@@ -1,0 +1,12 @@
+[package]
+name = "iconic-api"
+license.workspace = true
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+iconic-core = { path = "../iconic-core" }
+iconic-linalg = { path = "../iconic-linalg" }
+iconic-ipm = { path = "../iconic-ipm" }
+iconic-presolve = { path = "../iconic-presolve" }

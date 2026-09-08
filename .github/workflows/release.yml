@@ -1,0 +1,215 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+# Strip runner-specific absolute paths from compiled artifacts (defense in depth:
+# CI paths are already non-identifying, but this keeps wheels environment-free).
+env:
+  RUSTFLAGS: "--remap-path-prefix=/home/runner=/build --remap-path-prefix=/Users/runner=/build --remap-path-prefix=/root=/build"
+
+# Every build job stages the iconic-c C-ABI library into the package dir
+# (iconic-py/python/iconic/) BEFORE maturin runs, so the wheel bundles it and the
+# CVXPY backend (which ctypes-loads libiconic_c.{so,dylib,dll}) works from a pip
+# install. maturin includes non-Python files placed in the python-source package.
+
+jobs:
+  # ── Linux x86_64 ──────────────────────────────────────────────────────
+  linux-x86_64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: PyO3/maturin-action@v1
+        with:
+          target: x86_64
+          manylinux: auto
+          args: --release --out dist
+          before-script-linux: |
+            set -e
+            # OpenBLAS so iconic-linalg/build.rs detects and links it; auditwheel
+            # bundles libopenblas.so into the wheel automatically.
+            dnf install -y openblas-devel pkgconfig
+            # Build the C-ABI lib and stage it so maturin bundles it in the wheel.
+            cargo build -p iconic-c --release
+            cp target/release/libiconic_c.so iconic-py/python/iconic/
+      - name: Smoke test (native API + CVXPY backend end-to-end)
+        run: |
+          python3 -m pip install "dist/$(ls dist | grep -m1 '\.whl$')" cvxpy numpy
+          python3 - <<'PY'
+          import os, iconic
+          d = os.path.dirname(iconic.__file__)
+          assert any('iconic_c' in n for n in os.listdir(d)), f"C lib not bundled: {os.listdir(d)}"
+          print('ICONIC', iconic.__version__, '| C lib bundled OK')
+          sol = iconic.solve(p=[[1.0,0],[0,1.0]], q=[0.0,0.0], a=[[1.0,0],[0,1.0]], b=[1.0,1.0], cones=[('nonneg',2)])
+          assert sol.status == 'Solved', sol.status
+          import cvxpy as cp
+          from iconic._backend import register
+          register()
+          x = cp.Variable(2)
+          prob = cp.Problem(cp.Minimize(cp.sum_squares(x - 1)), [x >= 0])
+          prob.solve(solver='ICONIC')
+          print('CVXPY+ICONIC:', prob.status, round(prob.value, 6))
+          assert prob.status == 'optimal', prob.status
+          print('OK')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-linux-x86_64
+          path: dist/*.whl
+
+  # ── Linux aarch64 ─────────────────────────────────────────────────────
+  linux-aarch64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install aarch64 cross-compiler
+        run: |
+          sudo apt-get update && sudo apt-get install -y gcc-aarch64-linux-gnu
+          rustup target add aarch64-unknown-linux-gnu
+      - uses: PyO3/maturin-action@v1
+        with:
+          target: aarch64
+          manylinux: auto
+          args: --release --out dist
+          before-script-linux: |
+            set -e
+            dnf install -y epel-release
+            dnf install -y openblas-devel pkgconfig
+            # Cross-build the C-ABI lib for aarch64 and stage it for maturin.
+            # If cross OpenBLAS isn't present, iconic-linalg falls back to pure-Rust faer.
+            cargo build -p iconic-c --release --target aarch64-unknown-linux-gnu
+            cp target/aarch64-unknown-linux-gnu/release/libiconic_c.so iconic-py/python/iconic/
+      - name: Verify C lib bundled (no QEMU run)
+        run: |
+          python3 -m pip install --quiet wheel
+          wheel=$(ls dist/*.whl | head -1)
+          python3 -c "import zipfile,sys; ns=zipfile.ZipFile('$wheel').namelist(); assert any('libiconic_c.so' in n for n in ns), ns; print('C lib bundled in', '$wheel')"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-linux-aarch64
+          path: dist/*.whl
+
+  # ── macOS x86_64 ──────────────────────────────────────────────────────
+  macos-x86_64:
+    runs-on: macos-13
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install OpenBLAS
+        run: brew install openblas pkg-config
+      - name: Build & stage C library
+        run: |
+          cargo build -p iconic-c --release
+          cp target/release/libiconic_c.dylib iconic-py/python/iconic/
+      - uses: PyO3/maturin-action@v1
+        with:
+          target: x86_64
+          args: --release --out dist
+      - name: Smoke test
+        run: |
+          python3 -m pip install "$(ls dist/*.whl | head -1)"
+          python3 - <<'PY'
+          import os, iconic
+          d = os.path.dirname(iconic.__file__)
+          assert any('iconic_c' in n for n in os.listdir(d)), f"C lib not bundled: {os.listdir(d)}"
+          sol = iconic.solve(p=[[1.0,0],[0,1.0]], q=[0.0,0.0], a=[[1.0,0],[0,1.0]], b=[1.0,1.0], cones=[('nonneg',2)])
+          assert sol.status == 'Solved', sol.status
+          print('ICONIC', iconic.__version__, 'OK (C lib bundled)')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-macos-x86_64
+          path: dist/*.whl
+
+  # ── macOS arm64 ───────────────────────────────────────────────────────
+  macos-arm64:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install OpenBLAS
+        run: brew install openblas pkg-config
+      - name: Build & stage C library
+        run: |
+          cargo build -p iconic-c --release
+          cp target/release/libiconic_c.dylib iconic-py/python/iconic/
+      - uses: PyO3/maturin-action@v1
+        with:
+          target: aarch64
+          args: --release --out dist
+      - name: Smoke test
+        run: |
+          python3 -m pip install "$(ls dist/*.whl | head -1)"
+          python3 - <<'PY'
+          import os, iconic
+          d = os.path.dirname(iconic.__file__)
+          assert any('iconic_c' in n for n in os.listdir(d)), f"C lib not bundled: {os.listdir(d)}"
+          sol = iconic.solve(p=[[1.0,0],[0,1.0]], q=[0.0,0.0], a=[[1.0,0],[0,1.0]], b=[1.0,1.0], cones=[('nonneg',2)])
+          assert sol.status == 'Solved', sol.status
+          print('ICONIC', iconic.__version__, 'OK (C lib bundled)')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-macos-arm64
+          path: dist/*.whl
+
+  # ── Windows x86_64 ────────────────────────────────────────────────────
+  windows-x86_64:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      # Windows has no system OpenBLAS; iconic-linalg/build.rs only probes on
+      # Linux, so the build falls back to pure-Rust faer automatically.
+      - name: Build & stage C library
+        run: |
+          cargo build -p iconic-c --release
+          Copy-Item target\release\iconic_c.dll iconic-py\python\iconic\
+      - uses: PyO3/maturin-action@v1
+        with:
+          target: x64
+          args: --release --out dist
+      - name: Smoke test
+        run: |
+          $whl = (Get-ChildItem dist\*.whl | Select-Object -First 1).FullName
+          python -m pip install "$whl"
+          python -c "import os, iconic; d=os.path.dirname(iconic.__file__); assert any('iconic_c' in n for n in os.listdir(d)), os.listdir(d); sol=iconic.solve(p=[[1.0,0],[0,1.0]], q=[0.0,0.0], a=[[1.0,0],[0,1.0]], b=[1.0,1.0], cones=[('nonneg',2)]); assert sol.status=='Solved', sol.status; print('ICONIC', iconic.__version__, 'OK (C lib bundled)')"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-windows-x86_64
+          path: dist/*.whl
+
+  # ── sdist ─────────────────────────────────────────────────────────────
+  sdist:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build sdist
+        run: |
+          python3 -m pip install "maturin>=1.5"
+          cd iconic-py && maturin sdist --out ../dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sdist
+          path: dist/*.tar.gz
+
+  # ── Publish to PyPI ───────────────────────────────────────────────────
+  publish:
+    needs: [linux-x86_64, linux-aarch64, macos-x86_64, macos-arm64, windows-x86_64, sdist]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    environment: pypi-release
+    permissions:
+      id-token: write  # OIDC trusted publishing
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - run: ls -la dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1

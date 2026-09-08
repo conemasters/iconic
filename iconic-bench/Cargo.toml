@@ -1,0 +1,19 @@
+[package]
+name = "iconic-bench"
+license.workspace = true
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+iconic-core = { path = "../iconic-core" }
+iconic-linalg = { path = "../iconic-linalg" }
+iconic-ipm = { path = "../iconic-ipm" }
+iconic-presolve = { path = "../iconic-presolve" }
+iconic-mip = { path = "../iconic-mip" }
+iconic-simplex = { path = "../iconic-simplex" }
+iconic-api = { path = "../iconic-api" }
+
+# At M7: Criterion micro-benchmarks + in-process adapters for cross-comparison.
+# [dev-dependencies]
+# criterion = "0.5"

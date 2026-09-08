@@ -1,0 +1,42 @@
+[workspace]
+resolver = "2"
+members = [
+    "iconic-core",
+    "iconic-linalg",
+    "iconic-presolve",
+    "iconic-ipm",
+    "iconic-api",
+    "iconic-py",
+    "iconic-c",
+    "iconic-bench",
+    "iconic-simplex",
+    "iconic-mip",
+]
+# iconic-py is a PyO3 extension (cdylib); it is built via maturin, not plain `cargo`,
+# so it is excluded from the default set that `cargo test`/`clippy` operate on.
+default-members = [
+    "iconic-core",
+    "iconic-linalg",
+    "iconic-presolve",
+    "iconic-ipm",
+    "iconic-api",
+    "iconic-bench",
+    "iconic-simplex",
+    "iconic-mip",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.82"
+license = "Apache-2.0"
+
+[workspace.dependencies]
+num-traits = "0.2"
+
+# Always compile with optimization — debug builds of ICONIC are ~30× slower
+# and make benchmark comparisons meaningless. `cargo check` is unaffected.
+[profile.dev]
+opt-level = 2
+[profile.dev.package."*"]
+opt-level = 2

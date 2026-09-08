@@ -1,0 +1,9 @@
+[package]
+name = "iconic-core"
+license.workspace = true
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+num-traits.workspace = true

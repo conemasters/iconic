@@ -1,0 +1,19 @@
+[package]
+name = "iconic-mip"
+license.workspace = true
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Mixed-integer programming: branch-and-bound, cutting planes, MIP presolve, and heuristics"
+
+[dependencies]
+iconic-core = { path = "../iconic-core" }
+iconic-linalg = { path = "../iconic-linalg" }
+iconic-api = { path = "../iconic-api" }
+iconic-simplex = { path = "../iconic-simplex" }
+# Deterministic hashing for the crate's trajectory-affecting collections. std's
+# HashMap/HashSet seed per-process randomness into iteration order, which made
+# the search nondeterministic (mdk_n30_k3 flipped between Solved at the true
+# optimum and SolvedInaccurate at 1% worse across identical runs). rustc-hash is
+# already in the lockfile (numpy's dependency), so this adds no new downloads.
+rustc-hash = "2"

@@ -1,0 +1,42 @@
+[build-system]
+requires = ["maturin>=1.5,<2"]
+build-backend = "maturin"
+
+[project]
+name = "iconic"
+version = "0.1.0"
+description = "ICONIC: a convex optimizer in Rust — LP, QP, SOCP, SDP, Exponential Cone, MIP"
+readme = "README.md"
+license = {text = "Apache-2.0"}
+requires-python = ">=3.9"
+keywords = ["convex-optimization", "cvxpy", "solver"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Rust",
+    "Topic :: Scientific/Engineering :: Mathematics",
+]
+
+[project.optional-dependencies]
+cvxpy = ["cvxpy>=1.4", "scipy>=1.7"]
+
+[tool.maturin]
+python-source = "python"
+module-name = "iconic._iconic"
+bindings = "pyo3"
+# The iconic-c C-ABI library is staged into python/iconic/ by the release workflow and
+# loaded by the CVXPY backend via ctypes. It is gitignored (**/*.so), so it must be
+# listed explicitly here to override maturin's gitignore-aware packaging.
+include = [
+    { path = "python/iconic/libiconic_c.so", format = "wheel" },
+    { path = "python/iconic/libiconic_c.dylib", format = "wheel" },
+    { path = "python/iconic/iconic_c.dll", format = "wheel" },
+]
+

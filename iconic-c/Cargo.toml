@@ -1,0 +1,16 @@
+[package]
+name = "iconic-c"
+license.workspace = true
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Native C ABI for the ICONIC convex optimizer"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+iconic-api = { path = "../iconic-api" }
+iconic-core = { path = "../iconic-core" }
+iconic-linalg = { path = "../iconic-linalg" }
+iconic-mip = { path = "../iconic-mip" }

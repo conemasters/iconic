@@ -1,0 +1,14 @@
+# Release is the only profile used for builds and benchmarks — debug runs
+# ~30× slower and confuses benchmark comparisons.
+#
+# NOTE: cargo does not allow [alias] entries to redefine built-in commands
+# (doc.rust-lang.org/cargo/reference/config.html — "Aliases are not allowed
+# to redefine existing built-in commands"), so the previous
+# `build = "build --release"` / `test = "test --release"` aliases were
+# silently ignored: bare `cargo build` / `cargo test` always compiled the
+# dev/test profile (debuginfo=2, debug-assertions=on).
+#
+# The release guarantee is enforced by explicit `--release` on every cargo
+# invocation in the Makefile and the docs. If you run
+# cargo by hand, pass `--release` yourself — never quote debug-profile
+# timings as benchmark results.

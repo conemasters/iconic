@@ -1,0 +1,18 @@
+[package]
+name = "iconic-py"
+license.workspace = true
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[lib]
+name = "iconic"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "0.23", features = ["extension-module", "abi3-py39"] }
+numpy = "0.23"
+iconic-core = { path = "../iconic-core" }
+iconic-linalg = { path = "../iconic-linalg" }
+iconic-api = { path = "../iconic-api" }
+iconic-ipm = { path = "../iconic-ipm" }
